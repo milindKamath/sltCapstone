@@ -1,0 +1,86 @@
+expt: debug
+notes: Features used - resnet, optical flow, openpose ( new normalized )
+save_path: /home/nrk1787/slt_phase2/models/multimodal_transformer/data/debug
+
+data:
+    sl: gsl
+    vocab: /home/nrk1787/slt_phase2/Datasets/GSL/phoenix2014T.vocab.txt
+    train: /home/nrk1787/slt_phase2/Datasets/GSL/PHOENIX-2014-T.train.corpus.csv
+    val: /home/nrk1787/slt_phase2/Datasets/GSL/PHOENIX-2014-T.dev.corpus.csv
+    test: /home/nrk1787/slt_phase2/Datasets/GSL/PHOENIX-2014-T.test.corpus.csv
+    vid_col: name
+    caption_col: translation
+    features:
+        f1:
+            name: resnet50
+            path: /home/nrk1787/slt_phase2/Datasets/GSL/resnet
+        f2: 
+            name: optical_flow
+            path: /home/nrk1787/slt_phase2/Datasets/GSL/optical_flow/after_resnet50
+        f3: 
+            name: openpose
+            path: /home/nrk1787/slt_phase2/Datasets/GSL/openpose/new_normalised
+    pad_index: 1
+
+model:
+    type: mult
+    batch_size: 8
+    shuffle: True
+    f1_only: True
+    f2_only: True
+    f3_only: True
+    optimizer:
+        lr: 1.0e-3
+        betas:
+            - 0.9
+            - 0.998
+        eps: 1.0e-8
+        weight_decay: 0.001
+        amsgrad: False
+    scheduler:
+        mode: max
+        patience: 8
+        factor: 0.7
+        threshold_mode: abs
+        verbose: False
+    loss:
+        smoothing: 0.0
+        translation_normalization_mode: 'batch'
+        translation_loss_weight: 1.0
+        batch_multiplier: 1
+    encoder:
+        emb_dim: 512 
+        attn_dropout_mem: 0
+        attn_dropout_f1: 0.1
+        attn_dropout_f2: 0.0
+        attn_dropout_f3: 0.0
+        num_layers: 3
+        num_heads: 8
+        attn_mask: True
+        embed_dropout: 0.1
+        relu_dropout: 0.1
+        res_dropout: 0.1
+    decoder:
+        emb_dim: 512
+        scale: False
+        norm_type: 'batch'
+        activation_type: softsign
+        num_layers: 3
+        num_heads: 8
+        max_out_len: 30
+
+training:
+    resume: False
+    epochs: 300
+    save_model_epoch: 5
+    save_sent_epoch: 5
+    learning_rate_min: 1.0e-7
+
+misc:
+    seed: 42
+    use_cuda: True
+    max_output_length: 30
+    wandb: False
+
+
+

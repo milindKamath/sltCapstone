@@ -1,0 +1,11 @@
+feature: optical_flow
+csv: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/new_asl_2_preprocessed.csv
+vid_col: Video_name
+path_col: path
+gloss_col: gloss_frames
+out_dir: /shared/kgcoe-research/mil/sign_language_review/slt_phase2/Misc/Nikunj/features/ASL/optical_flow/features
+optical_flow_out: /shared/kgcoe-research/mil/sign_language_review/slt_phase2/Misc/Nikunj/features/ASL/optical_flow/original
+ext: jpg
+sort_type: custom
+batch_size: 16
+use_cuda: True

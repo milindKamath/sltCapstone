@@ -1,0 +1,457 @@
+syntax = "proto3";
+option go_package = ".;proto";
+package proto;
+
+import "common.proto";
+
+service ASLingOrchestrator {
+    // used to forward us frames so we can preprocess
+    rpc ProcessFrame (ProcessFrameInputASLing) returns (ProcessFrameOutputASLing) {
+    };
+    // tells the client which frames were processed successfully and kept
+    rpc Present (PresentInputASLing) returns (PresentOutputASLing) {
+    };
+    // triggers storage of annotation, images, and features
+    rpc RecordAnnotation (RecordAnnotationInputASLing) returns (RecordAnnotationOutputASLing) {
+    };
+    // only updates dynamodb
+    rpc UpdateAnnotation (UpdateAnnotationInputASLing) returns (UpdateAnnotationOutputASLing) {
+    }
+    // list all annotations known to ASLingDB. This assumes that if something is in the database,
+    // the images must be in the datalake
+    rpc ListAnnotations (ListAnnotationsInputASLing) returns (ListAnnotationsOutputASLing) {
+    }
+    // gets the linguistics of something in the datalake
+    rpc GetLinguistics (GetLinguisticsInputASLing) returns (GetLinguisticsOutputASLing) {
+    }
+    // gets all the frames with an associated annotation. Note that as of now, this does not return
+    // the actual CV processed but just the raw images
+    rpc GetFrames (GetFramesInputASLing) returns (stream GetFramesOutputASLing) {
+    }
+    // resets a user
+    rpc ResetUser (ResetUserInputASLing) returns (ResetUserOutputASLing) {
+    };
+}
+//////////////////// OUR RPC MESSAGES ////////////////////
+message DatabaseKey {
+    string signer = 1;
+    string key = 2;
+    string gloss = 3;
+    int64 date = 4;
+}
+
+message ProcessFrameInputASLing {
+    string session_id = 1;
+    Image frame = 2;
+    int64 epoch_time = 3;
+}
+
+message ProcessFrameOutputASLing {
+    bytes full_image = 1;
+    bytes hand_image = 2;
+    bytes head_image = 3;
+}
+
+message PresentInputASLing {
+    string session_id = 1;
+}
+
+message PresentOutputASLing {
+    repeated int32 frames_present = 1;
+}
+
+message RecordAnnotationInputASLing {
+    string session_id = 1;
+    Linguistics linguistics = 2;
+}
+
+message RecordAnnotationOutputASLing {
+}
+
+message UpdateAnnotationInputASLing {
+    string session_id = 1;
+    Linguistics linguistics = 2;
+    string signer = 3;
+    string key = 4;
+    int64 date = 5;
+}
+
+message UpdateAnnotationOutputASLing {
+}
+
+message ListAnnotationsInputASLing {
+    string session_id = 1;
+}
+
+message ListAnnotationsOutputASLing {
+    repeated DatabaseKey database_keys  = 1;
+}
+
+message GetLinguisticsInputASLing {
+    string session_id = 1;
+    DatabaseKey database_key  = 2;
+}
+
+message GetLinguisticsOutputASLing {
+    Linguistics linguistics = 1;
+}
+
+message GetFramesInputASLing {
+    string session_id = 1;
+    DatabaseKey database_key  = 2;
+}
+
+message GetFramesOutputASLing {
+    int32 frame_number = 1;
+    bytes full_image = 2;
+    bytes hand_image = 3;
+    bytes head_image = 4;
+}
+
+message ResetUserInputASLing {
+    string session_id = 1;
+}
+
+message ResetUserOutputASLing {
+
+}
+
+message Linguistics {
+    repeated int32 frames = 1;
+    Annotation annotation = 2;
+    Noise noise = 3;
+}
+
+//////////////////// LANGUAGE MODEL PROTOS ////////////////////
+
+message Noise {
+    NoiseLevel pose_noise = 1;
+    NoiseLevel dom_handshape_noise = 2;
+    NoiseLevel nondom_handshape_noise = 3;
+    NoiseLevel face_noise = 4;
+}
+
+message Annotation {
+    repeated int64 frame_number = 1;
+    repeated IndividualSign signs = 2;
+    string glosses = 3;
+    string interpretation = 4;
+    reserved 5;
+}
+
+message IndividualSign {
+    repeated int64 frame_number = 1;
+    string gloss = 2;
+    // we define a sign as being composed of one or more free morphemes (to handle
+    // compound signs that STOKOE model behaves questionably with).
+    // we do this so we can capture both assimilation (typically captured by the HMH model)
+    // and the individual morpheme level (typically captured by Stokoe model). If you think there's a better
+    // model, let @BCG or @NPW know
+    repeated FreeMorph sign_components = 3;
+}
+
+message FreeMorph {
+    // we assume every freemorph has at most two hand configurations.
+    // if the end hand configuration of this morpheme is assimilated, end should be null
+    HandConfigs start = 1;
+    HandConfigs end = 2;
+    // you can have only one global movement (global movement tracks either both hands or just the dominant hand
+    // due to the symmetry condition of ASL) and the movement of the wrist is "simple".
+    GlobalMovement global_movement = 3;
+    // due to the complexity (demonstrated by the flexion models), these can be coarticulated with eachother
+    repeated LocalMovement local_movement = 4;
+    // because this is a free morph, it should have a gloss by itself
+    string gloss = 5;
+    // We assume that the phonological features of being single handed, oscillatory, and symmetrical
+    // belong to the morpheme level. e.g. BROTHER=BOY_SAME (where same is signed using 1/G handshapes)
+    // the SAME is twohanded symmetrical but the BOY is onehanded
+    // @BCG: this should be absorbed into the global movement iff it cannot be coarticulated with any other global
+    // movement IMHO.
+    Symmetrical symmetry = 6;
+    // not used yet
+    // repeated NonmanualMarker nonmanual_marker = 4;
+}
+
+message HandConfigs {
+    SingleHandConfig dominant = 1;
+    SingleHandConfig non_dominant = 2;
+    RelativePosition rel_pos = 3;
+}
+
+message SingleHandConfig {
+    Handshape handshape = 1;
+    HandOrientation hand_orientation = 2;
+    HandPosition hand_position = 3;
+}
+
+message NonmanualMarker {
+    oneof morpheme {
+        FacialExpression facial_expression = 1;
+        MouthMorpheme mouth_morpheme = 2;
+    }
+
+    // BodyPosition body_position = 3;
+    // ShoulderMovement shoulder_movement = 4;
+    // HeadTilt head_tilt = 5;
+    // EyeGaze eye_gaze = 6;
+}
+
+//////////////////// ALL PHONEME ENUMS ////////////////////
+
+enum Symmetrical {
+    // like BOY
+    ONE_HANDED = 0;
+    // like NIGHT (note: due to the symmetry condition, the nondominant hand cannot move
+    // if this flag is set)
+    ASYMMETRICAL = 1;
+    // like PRAY
+    MIRRORING = 2;
+    // like the sign for SIGN (with two D handshapes - not 5-s)
+    ALTERNATING = 3;
+}
+
+/*
+ * BCG: INFO
+ * https://en.wiktionary.org/wiki/Appendix:Sign_language_handshapes
+ * https://www.handspeak.com/word/asl-eng/hs-primes-popup.php
+ * https://maricopa.instructure.com/courses/809123/pages/things-to-know
+ */
+enum Handshape {
+    INVALID_HS = 0;
+    UNREPPED_HS = 1;
+    ONE = 2;
+    THREE = 3;
+    CLAW_THREE = 4;
+    FOUR = 5;
+    FIVE = 6;
+    CLAW_FIVE = 7;
+    HALF_FIVE = 8;
+    SIX = 9;
+    SEVEN = 10;
+    EIGHT = 11;
+    NINE = 12;
+    TWENTY = 13;
+    TWENTY_FIVE = 14;
+    A = 15;
+    OPEN_A = 16;
+    B = 17;
+    BENT_B = 18;
+    FLAT_B = 19;
+    OPEN_B = 20;
+    C = 21;
+    SMALL_C = 22;
+    D = 23;
+    E = 24;
+    G = 25;
+    H = 26;
+    OPEN_H = 27;
+    I = 28;
+    K = 29;
+    L = 30;
+    M = 31;
+    OPEN_M = 32;
+    N = 33;
+    OPEN_N = 34;
+    FLAT_N = 35;
+    O = 36;
+    FLAT_O = 37;
+    SMALL_O = 38;
+    R = 39;
+    S = 40;
+    T = 41;
+    V = 42;
+    BENT_V = 43;
+    X = 44;
+    OPEN_X = 45;
+    Y = 46;
+    ILY = 47;
+    HORNS = 48;
+}
+
+/*
+ * BCG: INFO
+ * https://lingdept.files.wordpress.com/2015/08/quickguidestokoenotation-pages.pdf
+ * https://aslfont.github.io/Symbol-Font-For-ASL/asl/palm-orientation.html
+ */
+enum HandOrientation {
+    INVALID_HO = 0;
+    UNREPPED_HO = 1;
+    FACING_UP = 2;
+    FACING_DOWN = 3;
+    FACING_DOM = 4;
+    FACING_NONDOM = 5;
+    FACING_INWARD = 6;
+    FACING_OUTWARD = 7;
+}
+
+/*
+ * BCG: INFO
+ * https://lingdept.files.wordpress.com/2015/08/quickguidestokoenotation-pages.pdf
+ * https://en.wikibooks.org/wiki/American_Sign_Language/Location
+ */
+enum HandPosition {
+    INVALID_HP = 0;
+    UNREPPED_HP = 1;
+    NEUTRAL_HP = 2;
+    WHOLE_FACE = 3;
+    UPPER_FACE = 4;
+    MID_FACE = 5;
+    LOWER_FACE = 6;
+    SIDE_FACE = 7;
+    NECK = 8;
+    SHOULDER = 9;
+    CENTER_CHEST = 10;
+    DOM_CHEST = 11;
+    NONDOM_CHEST = 12;
+    ABDOMEN = 13;
+    UPPER_ARM = 14;
+    ELBOW = 15;
+    FOREARM = 16;
+    INSIDE_WRIST = 17;
+    BACK_WRIST = 18;
+    NONDOM_HAND = 19;
+}
+
+/*
+ * BCG: INFO
+ * none
+ */
+enum RelativePosition {
+    // DO NOT USE 6 (would use reserved but that seems broken)
+    INVALID_RP = 0;
+    UNREPPED_RP = 1;
+    NONE_RP = 2;
+    ABOVE = 3;
+    BELOW = 4;
+    DOM_SIDE = 5;
+    // NON DOM SIDE WAS 6 BUT WAS MERGED WITH CROSSED
+    IN_FRONT = 7;
+    BEHIND = 8;
+    INTERLACING = 9;
+    GRASPING = 10;
+    CROSSING = 11;
+}
+
+/*
+ * BCG: INFO
+ * https://lingdept.files.wordpress.com/2015/08/quickguidestokoenotation-pages.pdf
+ */
+
+// @BCG: please make sure that this is appropriate. the rule I'm using is
+// if this movement cannot be coarticulated with the "upward" (or any other global movement)
+// then it's a global movement. If it can be coarticulated then it's a local movement.
+// more generally global movements are mone in which the wrist moves (not including rotation) and local movements
+// are typiclaly movements of the flexions
+enum GlobalMovement {
+    INVALID_GMV = 0;
+    UNREPPED_GMV = 1;
+    NONE_GMV = 2;
+    UPWARD = 3;
+    DOWNWARD = 4;
+    UP_DOWN = 5;
+    DOMWARD = 6;
+    NONDOMWARD = 7;
+    DOM_NONDOM = 8;
+    INWARD = 9;
+    OUTWARD = 10;
+    IN_OUT = 11;
+    CIRCULAR = 12;
+    APPROACHING = 13;
+    SEPERATING = 14;
+    HOOK = 15;
+}
+
+enum LocalMovement {
+    INVALID_LMV = 0;
+    UNREPPED_LMV = 1;
+    NONE_LMV = 2;
+    PALM_TWIST_IN = 3;
+    PALM_TWIST_OUT = 4;
+    PALM_TWIST_IN_OUT = 5;
+    NOD_BEND = 6;
+    OPENING = 7;
+    CLOSING = 8;
+    WIGGLING_FINGERS = 9;
+    ENTERING = 10;
+    EXITING = 11;
+}
+
+/*
+ * BCG: INFO
+ * none
+ */
+// TODO(@BGC): add in when we want to deal with indicies. perhaps we should also add 3d then?
+enum MovementDirectionality {
+    INVALID_MD = 0;
+    UNREPPED_MD = 1;
+    NONE_MD = 2;
+    TOWARD_SIGNER = 3;
+    AWAY_FROM_SIGNER = 4;
+    TOWARD_DOM_SIDE_INDEX = 5;
+    TOWARD_NONDON_SIDE_INDEX = 6;
+    // BCG: should we differeniate between signs that are "backwards", I-INVITE-YOU I think?
+}
+
+/*
+ * BCG: INFO
+ *
+ */
+enum FacialExpression {
+    INVALID_FE = 0;
+    UNREPPED_FE = 1;
+    UNKNOWN_FE = 2;
+    NEUTRAL_FE = 3;
+}
+
+/*
+ * BCG: INFO
+ * https://tsidconference.org/2013/files/handouts/The_5th_Parameter/5th_parameter_TSID_2013.ppt
+ * https://www.handspeak.com/learn/index.php?id=95
+ * https://www.reddit.com/r/asl/comments/cuwy25/mouth_morpheme_cheat_sheetmouth_morphemes_in_asl/
+ * https://www.youtube.com/watch?v=AYMDOd8JoLY
+ * https://www.youtube.com/watch?v=jMBEN2tUQXA
+ * https://www.youtube.com/watch?v=J53caAywRbc
+ * https://www.youtube.com/watch?v=NbbNwVwdfGg
+ */
+enum MouthMorpheme {
+    INVALID_MM = 0;
+    UNREPPED_MM = 1;
+    UNKNOWN_MM = 2;
+    NEUTRAL_MM = 3;
+    // PHASE 1 mouth morphemes implementation
+    // BCG: choosen for P1 b/c easily accessible, well explained, and reoccuring
+    MMM = 4;
+    OO = 5;
+    CHA = 6;
+    AHH = 7;
+    CS = 8;
+    TH = 9;
+    PUFFED_CHEEKS = 10;
+    PUCKERED_LIPS = 11;
+    PAH = 12;
+}
+
+//////////////////// UTIL MESSAGES AND ENUMS ////////////////////
+
+message Coordinate {
+    double x = 1;
+    double y = 2;
+}
+
+message CoordinateSet {
+    repeated Coordinate coordinates = 1;
+}
+
+message BoundingBox {
+    Coordinate lower_left = 1;
+    Coordinate upper_right = 2;
+}
+
+enum NoiseLevel {
+    UNKNOWN = 0;
+    NONE = 1;
+    LOW = 2;
+    MODERATE = 3;
+    HIGH = 4;
+    BROKEN = 5;
+}

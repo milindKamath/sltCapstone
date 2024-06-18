@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <!-- Favicon -->
+    <!--link rel="shortcut icon" href="{{url_for('static', filename='images/favicon.ico')}}"-->
+
+    <!-- JQuery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script type = "text/javascript"  src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script type = "text/javascript" src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script type = "text/javascript"  src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Datatable -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.3/css/responsive.dataTables.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.11.2/moment.min.js"></script>
+    <script type = "text/javascript"  src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script type = "text/javascript"  src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
+    <script type = "text/javascript"  src="https://cdn.datatables.net/plug-ins/1.10.15/dataRender/datetime.js"></script>
+  </head>
+  <body>
+    <div class="card">
+        <div class="card-body">
+            {% if time %}
+                <div>
+                    <a href="/">Home</a>
+                </div>
+                <div>
+                    <img src="/send_image/{{time}}" alt='img' style="width: 100%;">
+                </div>
+                <div>
+                    <form method="POST" action="/download_image/{{time}}">
+                        <button>Download</button>
+                    </form>
+                </div>
+                
+            {% else %}
+                <table id="test" class="display" style="width: 100%">
+                    <thead>
+                        <tr>
+                            {% for header in headers %}
+                                <th>{{header}}</th>
+                            {% endfor %}
+                        </tr>
+                        <tbody>
+                            {% for vid, values in res.items() %}
+                                <tr>
+                                    <td><a href='/process/{{ vid }}'>{{vid}}</a></td>
+                                    <td>{{values['seq']}}</td>
+                                    <td>{{values['b1']}}</td>
+                                    <td>{{values['b2']}}</td>
+                                    <td>{{values['b3']}}</td>
+                                    <td>{{values['b4']}}</td>
+                                    <td>{{values['gt']}}</td>
+                                    <td>{{values['pred']}}</td>
+                                </tr>
+                                    
+                            {% endfor %}
+                        </tbody>
+                    </thead>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+  </body>
+  <script type="text/javascript">
+    $('#test').DataTable();
+  </script>
+  
+</html>

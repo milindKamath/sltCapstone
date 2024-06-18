@@ -1,0 +1,9 @@
+test: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/new_asl_2_preprocessed_test.csv
+csv:  /home/nrk1787/slt_phase2/models/multimodal_transformer/data/33/wandb_export_2020-11-12T03_34_24.540-05_00.csv
+pickle: /home/nrk1787/slt_phase2/models/multimodal_transformer/data/debug/attn_wts.pkl
+sl: asl
+left_on: Caption
+right_on: gt
+vid_col: Video_name
+resnet50_test: /home/nrk1787/slt_phase2/Datasets/ASL_2/features/new/resnet50
+dir: /home/nrk1787/slt_phase2/models/multimodal_transformer/visualize/plots

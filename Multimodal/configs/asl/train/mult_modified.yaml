@@ -1,0 +1,86 @@
+expt: debug
+notes: ASL on modified mult (transfer learning); features - resnet50, optical flow, openpose (after smoothing new normalized); 256 self attention dims
+save_path: /home/nrk1787/slt_phase2/models/multimodal_transformer/data/debug
+
+data:
+    sl: asl
+    vocab: /home/nrk1787/slt_phase2/Datasets/ASL_2/vocab/new_vocab.txt
+    train: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/new_asl_2_preprocessed_train.csv
+    val: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/new_asl_2_preprocessed_test.csv
+    test: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/new_asl_2_preprocessed_test.csv
+    vid_col: Video_name
+    caption_col: Caption
+    features:
+        f1:
+            name: resnet50
+            path: /home/nrk1787/slt_phase2/Datasets/ASL_2/features/new/resnet50
+        f2: 
+            name: optical_flow
+            path: /home/nrk1787/slt_phase2/Datasets/ASL_2/features/new/optical_flow/features
+        f3: 
+            name: openpose
+            path: /home/nrk1787/slt_phase2/Datasets/ASL_2/features/new/openpose/after_smoothing_new_normalised
+    pad_index: 1
+
+model:
+    type: mult_modified
+    batch_size: 8
+    shuffle: True
+    f1_only: True
+    f2_only: True
+    f3_only: True
+    optimizer:
+        lr: 1.0e-3
+        betas:
+            - 0.9
+            - 0.998
+        eps: 1.0e-8
+        weight_decay: 0.001
+        amsgrad: False
+    scheduler:
+        mode: max
+        patience: 8
+        factor: 0.7
+        threshold_mode: abs
+        verbose: False
+    loss:
+        smoothing: 0.0
+        translation_normalization_mode: 'batch'
+        translation_loss_weight: 1.0
+        batch_multiplier: 1
+    encoder:
+        emb_dim: 512 
+        attn_dropout_mem: 0
+        attn_dropout_f1: 0.1
+        attn_dropout_f2: 0.0
+        attn_dropout_f3: 0.0
+        num_layers: 3
+        num_heads: 8
+        attn_mask: True
+        embed_dropout: 0.1
+        relu_dropout: 0.1
+        res_dropout: 0.1
+    decoder:
+        emb_dim: 1536
+        scale: False
+        norm_type: 'batch'
+        activation_type: softsign
+        num_layers: 3
+        num_heads: 8
+        max_out_len: 30
+
+training:
+    resume: False
+    transfer_learning: True
+    ckpt: /home/nrk1787/slt_phase2/models/multimodal_transformer/data/45/ckpt/best.ckpt
+    epochs: 500
+    save_model_epoch: 5
+    save_sent_epoch: 5
+    learning_rate_min: 1.0e-7
+    capture_wts: True
+
+misc:
+    seed: 42
+    use_cuda: True
+    max_output_length: 30
+    wandb: False

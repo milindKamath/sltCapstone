@@ -1,0 +1,16 @@
+csv: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/ASL_2_preprocessed.csv
+data: /shared/kgcoe-research/mil/sign_language_review/Datasets/Original_frames/ASl_2
+additional_files:
+    - ThbXfQ6pYSQ3n267l1VQ_2
+    - KGNbSuJE9fQbzONJAAwd_2
+    - BpLnfgDsc2WD8F2qNfHK_2
+    - VuS9jZ8uVbhV3vC5AWX3_2
+    - N95RxRTZHWUsaD6HEdz0_2
+    - 5a84jjJkwzDkh9h2fhfU_2
+    - 9IVUWSP2NcHciWvqZTa2_2
+    - 9IVUWSP2NcHciWvqZTa2_3
+additional_folder: /shared/kgcoe-research/mil/sign_language_review/slt_phase2/Models_scripts/Nikunj/additional_files
+vid_col: Video_name
+path_col: path
+samples: 100
+out: /home/nrk1787/slt_phase2/Datasets/ASL_2/ground_truth/preprocessed_csvs/myasl.csv
